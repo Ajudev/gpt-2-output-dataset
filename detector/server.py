@@ -34,7 +34,7 @@ class RequestHandler(SimpleHTTPRequestHandler):
 
         tokens = tokenizer.encode(query)
         all_tokens = len(tokens)
-        tokens = tokens[:tokenizer.max_len - 2]
+        tokens = tokens[:tokenizer.model_max_length - 2]
         used_tokens = len(tokens)
         tokens = torch.tensor([tokenizer.bos_token_id] + tokens + [tokenizer.eos_token_id]).unsqueeze(0)
         mask = torch.ones_like(tokens)
@@ -80,13 +80,13 @@ def main(checkpoint, port=8080, device='cuda' if torch.cuda.is_available() else 
         assert os.path.isfile(checkpoint)
 
     print(f'Loading checkpoint from {checkpoint}')
-    data = torch.load(checkpoint, map_location='cpu')
+    data = torch.load(checkpoint, map_location='cuda:0')
 
     model_name = 'roberta-large' if data['args']['large'] else 'roberta-base'
     model = RobertaForSequenceClassification.from_pretrained(model_name)
     tokenizer = RobertaTokenizer.from_pretrained(model_name)
 
-    model.load_state_dict(data['model_state_dict'])
+    model.load_state_dict(data['model_state_dict'], strict=False)
     model.eval()
 
     print(f'Starting HTTP server on port {port}', file=sys.stderr)
